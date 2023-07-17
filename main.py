@@ -28,33 +28,28 @@ class VkUser:
             'extended': 1
         }
         req = requests.get(get_photos_url, params={**self.params, **params})
-        if 200 <= req.status_code < 300:
-            if 'response' in req.json().keys():
-                sizes = {'w': 0, 'z': 1, 'y': 2, 'x': 3, 'r': 4, 'q': 5, 'p': 6, 'o': 7, 'm': 8, 's': 9}
-                name_foto_list = []
-                photo_list_for_upload = []
-                for file in req.json()['response']['items']:
-                    types = []
-                    name_photo = str(file['likes']['count']) + '.jpg'
-                    date = '-' + str(file['date'])
-                    if name_photo not in name_foto_list:
-                        name_foto_list.append(name_photo)
-                    else:
-                        name_photo += date
-                        name_foto_list.append(name_photo)
-                    for size in file['sizes']:
-                        types.append(size['type'])
-                    types_sort = [i for i in sizes.keys() if i in types]
-                    max_size = sorted(file['sizes'], key=lambda x: x['type'] == types_sort[0])
-                    photo_list_for_upload.append({'url': max_size[-1]['url'],
-                                                  'size': max_size[-1]['type'],
-                                                  'name': name_photo})
-                print(f'{timelog}: Список фотографий для скачивания получен.')
-                return photo_list_for_upload
+        if req.status_code >= 300:
+            quit(f'{timelog}: Произошла ошибка! Список фотографий не получен!')
+        if 'response' not in req.json().keys():
+            quit(f'{timelog}: Произошла ошибка! Список фотографий не получен!')
+        sz = ['w', 'z', 'y', 'x', 'r', 'q', 'p', 'o', 'm', 's']
+        photo_list_for_upload = []
+        name_foto_list = []
+        count = 0
+        for file in req.json()['response']['items']:
+            name_photo = str(file['likes']['count']) + '.jpg'
+            date = '-' + str(file['date'])
+            max_size = sorted(file['sizes'], key=lambda x: sz.index(x['type'][0]) if x['type'] in sz else '')
+            if name_photo not in name_foto_list:
+                name_foto_list.append(name_photo)
             else:
-                quit(f'{timelog}: Введен некорректный Id пользователя! Фотографии не будут загружены')
-        else:
-            quit(f'{timelog}: Ошибка. Что-то пошло не так!')
+                name_photo += date + '-' + str(count)
+                name_foto_list.append(name_photo)
+            photo_list_for_upload.append({'url': max_size[0]['url'],
+                                          'size': max_size[0]['type'],
+                                          'name': name_photo})
+        print(f'{timelog}: Список фотографий для скачивания получен.')
+        return photo_list_for_upload
 
 
 class YaUploader:
@@ -67,32 +62,27 @@ class YaUploader:
     def upload(self, path_to_photo, count=5):
         """метод создает папку на Яндекс диске и загружает фотографии из списка в эту папку.
         По умолчанию 5 фотографий"""
+        if len(path_to_photo) == 0:
+            quit(f'{timelog}: Ошибка. Список фотографий для скачивания пуст.')
         url_new_folder = 'https://cloud-api.yandex.net/v1/disk/resources'
         folder = input('Придумайте название новой папки для загруженных фотографий! ')
         req = requests.put(url_new_folder, params={'path': f'/{folder}'}, headers={'Authorization': token_ya})
-        if 200 <= req.status_code < 300:
-            print(f'{timelog}: Папка {folder} создана.')
-            uploaded_photos = []
-            if type(path_to_photo) == list:
-                for file in tqdm(path_to_photo[:count]):
-                    time.sleep(0.33)
-                    params = {
-                        'url': file['url'],
-                        'path': f"/{folder}/{file['name']}"
-                    }
-                    headers = {'Authorization': token_ya}
-                    r = requests.post(self.url, params=params, headers=headers)
-                    if 200 <= r.status_code < 300:
-                        uploaded_photos.append({'file_name': file['name'], 'size': file['size']})
-                    else:
-                        print(f'{timelog}: Не удалось загрузить фотографию!')
-                with open('UploadedPhotos.json', 'w') as f:
-                    json.dump(uploaded_photos, f, ensure_ascii=False, indent=2)
-                print(f'{timelog}: Фотографии загружены на Яндекс диск!')
+        if req.status_code >= 300:
+            quit(f'{timelog}: Ошибка. Папка не создана. Фотографии не загружены!')
+        print(f'{timelog}: Папка {folder} создана.')
+        uploaded_photos = []
+        for file in tqdm(path_to_photo[:count]):
+            time.sleep(0.33)
+            params = {'url': file['url'], 'path': f"/{folder}/{file['name']}"}
+            headers = {'Authorization': token_ya}
+            r = requests.post(self.url, params=params, headers=headers)
+            if 200 <= r.status_code < 300:
+                uploaded_photos.append({'file_name': file['name'], 'size': file['size']})
             else:
-                quit(f'{timelog}: Фотографии не загружены!')
-        else:
-            quit(f'{timelog}: Папка не создана. Фотографии не загружены!')
+                print(f"{timelog}: Не удалось загрузить фотографию {file['name']}!")
+        with open('UploadedPhotos.json', 'w') as f:
+            json.dump(uploaded_photos, f, ensure_ascii=False, indent=2)
+        print(f'{timelog}: Фотографии загружены на Яндекс диск!')
 
 
 def download_photos(photo_url_list, path_on_pc, count=5):
@@ -114,28 +104,27 @@ def upload_on_gdrive_from_url(photo_url_list, count=5):
     folder.Upload()
     folder_id = folder['id']
     uploaded_photos = []
-    if type(photo_url_list) == list:
-        for file in tqdm(photo_url_list[:count]):
-            time.sleep(0.33)
-            metadata = {
-                'name': file['name'],
-                'parents': [folder_id]
-            }
-            files = {
+    if len(photo_url_list) == 0:
+        quit(f'{timelog}: Ошибка. Список фотографий для скачивания пуст.')
+    for file in tqdm(photo_url_list[:count]):
+        time.sleep(0.33)
+        metadata = {
+                   'name': file['name'],
+                   'parents': [folder_id]
+                   }
+        files = {
                 'data': ('metadata', json.dumps(metadata), 'application/json'),
                 'file': io.BytesIO(requests.get(file['url']).content)
-            }
-            r = requests.post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-                              headers={'Authorization': 'Bearer ' + gauth.credentials.access_token}, files=files)
-            if 200 <= r.status_code < 300:
-                uploaded_photos.append({'file_name': file['name'], 'size': file['size']})
-            else:
-                print('Не удалось загрузить фотографию!')
-        with open('UploadedPhotos.json', 'w') as f:
-            json.dump(uploaded_photos, f, ensure_ascii=False, indent=2)
-        print(f'{timelog}: Фотографии загружены на Google диск!')
-    else:
-        quit(f'{timelog}: Фотографии не загружены!')
+                }
+        r = requests.post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+                          headers={'Authorization': 'Bearer ' + gauth.credentials.access_token}, files=files)
+        if 200 <= r.status_code < 300:
+            uploaded_photos.append({'file_name': file['name'], 'size': file['size']})
+        else:
+            print(f"{timelog}: Не удалось загрузить фотографию {file['name']}!")
+    with open('UploadedPhotos.json', 'w') as f:
+        json.dump(uploaded_photos, f, ensure_ascii=False, indent=2)
+    print(f'{timelog}: Фотографии загружены на Google диск!')
 
 
 if __name__ == '__main__':
