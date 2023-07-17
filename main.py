@@ -30,6 +30,7 @@ class VkUser:
         req = requests.get(get_photos_url, params={**self.params, **params})
         if 200 <= req.status_code < 300:
             if 'response' in req.json().keys():
+                sizes = {'w': 0, 'z': 1, 'y': 2, 'x': 3, 'r': 4, 'q': 5, 'p': 6, 'o': 7, 'm': 8, 's': 9}
                 name_foto_list = []
                 photo_list_for_upload = []
                 for file in req.json()['response']['items']:
@@ -43,20 +44,17 @@ class VkUser:
                         name_foto_list.append(name_photo)
                     for size in file['sizes']:
                         types.append(size['type'])
-                    types_sorted = sorted(types, key=lambda x: x == 'w')
-                    for size in file['sizes']:
-                        if size['type'] == types_sorted[-1]:
-                            photo_list_for_upload.append({'url': size['url'], 'size': size['type'], 'name': name_photo})
+                    types_sort = [i for i in sizes.keys() if i in types]
+                    max_size = sorted(file['sizes'], key=lambda x: x['type'] == types_sort[0])
+                    photo_list_for_upload.append({'url': max_size[-1]['url'],
+                                                  'size': max_size[-1]['type'],
+                                                  'name': name_photo})
                 print(f'{timelog}: Список фотографий для скачивания получен.')
                 return photo_list_for_upload
             else:
-                print(f'{timelog}: Введен некорректный Id пользователя! Фотографии не будут загружены')
-        elif 400 <= req.status_code < 499:
-            print(f'{timelog}: Ошибка на стороне клиента!')
-        elif 500 <= req.status_code:
-            print(f'{timelog}: Ошибка на стороне сервера!')
+                quit(f'{timelog}: Введен некорректный Id пользователя! Фотографии не будут загружены')
         else:
-            print(f'{timelog}: Ошибка. Что-то пошло не так!')
+            quit(f'{timelog}: Ошибка. Что-то пошло не так!')
 
 
 class YaUploader:
@@ -92,13 +90,9 @@ class YaUploader:
                     json.dump(uploaded_photos, f, ensure_ascii=False, indent=2)
                 print(f'{timelog}: Фотографии загружены на Яндекс диск!')
             else:
-                print(f'{timelog}: Фотографии не загружены!')
-        elif 400 <= req.status_code < 499:
-            print(f'{timelog}: Папка не создана. Фотографии не загружены. Ошибка на стороне клиента!')
-        elif 500 <= req.status_code:
-            print(f'{timelog}: Папка не создана. Фотографии не загружены. Ошибка на стороне сервера!')
+                quit(f'{timelog}: Фотографии не загружены!')
         else:
-            print(f'{timelog}: Папка не создана. Фотографии не загружены!')
+            quit(f'{timelog}: Папка не создана. Фотографии не загружены!')
 
 
 def download_photos(photo_url_list, path_on_pc, count=5):
@@ -135,17 +129,13 @@ def upload_on_gdrive_from_url(photo_url_list, count=5):
                               headers={'Authorization': 'Bearer ' + gauth.credentials.access_token}, files=files)
             if 200 <= r.status_code < 300:
                 uploaded_photos.append({'file_name': file['name'], 'size': file['size']})
-            elif 400 <= r.status_code < 499:
-                print(f'{timelog}: Ошибка на стороне клиента!')
-            elif 500 <= r.status_code:
-                print(f'{timelog}: Ошибка на стороне сервера!')
             else:
                 print('Не удалось загрузить фотографию!')
         with open('UploadedPhotos.json', 'w') as f:
             json.dump(uploaded_photos, f, ensure_ascii=False, indent=2)
         print(f'{timelog}: Фотографии загружены на Google диск!')
     else:
-        print(f'{timelog}: Фотографии не загружены!')
+        quit(f'{timelog}: Фотографии не загружены!')
 
 
 if __name__ == '__main__':
