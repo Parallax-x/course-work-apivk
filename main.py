@@ -44,6 +44,7 @@ class VkUser:
                 name_foto_list.append(name_photo)
             else:
                 name_photo += date + '-' + str(count)
+                count += 1
                 name_foto_list.append(name_photo)
             photo_list_for_upload.append({'url': max_size[0]['url'],
                                           'size': max_size[0]['type'],
@@ -96,6 +97,8 @@ def download_photos(photo_url_list, path_on_pc, count=5):
 def upload_on_gdrive_from_url(photo_url_list, count=5):
     """Функция создает папку на Google диске и загружает фотографии из списка в эту папку.
     По умолчанию 5 фотографий. Нужен файл client_secrets.json"""
+    if len(photo_url_list) == 0:
+        quit(f'{timelog}: Ошибка. Список фотографий для скачивания пуст.')
     gauth = GoogleAuth()
     drive = GoogleDrive(gauth)
     folder_name = input('Придумайте название новой папки для загруженных фотографий! ')
@@ -104,8 +107,6 @@ def upload_on_gdrive_from_url(photo_url_list, count=5):
     folder.Upload()
     folder_id = folder['id']
     uploaded_photos = []
-    if len(photo_url_list) == 0:
-        quit(f'{timelog}: Ошибка. Список фотографий для скачивания пуст.')
     for file in tqdm(photo_url_list[:count]):
         time.sleep(0.33)
         metadata = {
