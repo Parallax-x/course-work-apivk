@@ -27,30 +27,37 @@ class VkUser:
             'rev': 1,
             'extended': 1
         }
-        req = requests.get(get_photos_url, params={**self.params, **params})
-        if req.status_code >= 300:
-            quit(f'{timelog}: Произошла ошибка! Список фотографий не получен!')
-        if 'response' not in req.json().keys():
-            quit(f'{timelog}: Произошла ошибка! Список фотографий не получен!')
-        sz = ['w', 'z', 'y', 'x', 'r', 'q', 'p', 'o', 'm', 's']
-        photo_list_for_upload = []
-        name_foto_list = []
-        count = 0
-        for file in req.json()['response']['items']:
-            name_photo = str(file['likes']['count']) + '.jpg'
-            date = '-' + str(file['date'])
-            max_size = sorted(file['sizes'], key=lambda x: sz.index(x['type'][0]) if x['type'] in sz else '')
-            if name_photo not in name_foto_list:
-                name_foto_list.append(name_photo)
-            else:
-                name_photo += date + '-' + str(count)
-                count += 1
-                name_foto_list.append(name_photo)
-            photo_list_for_upload.append({'url': max_size[0]['url'],
-                                          'size': max_size[0]['type'],
-                                          'name': name_photo})
-        print(f'{timelog}: Список фотографий для скачивания получен.')
-        return photo_list_for_upload
+        try:
+            req = requests.get(get_photos_url, params={**self.params, **params})
+            sz = ['w', 'z', 'y', 'x', 'r', 'q', 'p', 'o', 'm', 's']
+            photo_list_for_upload = []
+            name_foto_list = []
+            count = 0
+            for file in req.json()['response']['items']:
+                name_photo = str(file['likes']['count']) + '.jpg'
+                date = '-' + str(file['date'])
+                max_size = sorted(file['sizes'], key=lambda x: sz.index(x['type'][0]) if x['type'] in sz else '')
+                if name_photo not in name_foto_list:
+                    name_foto_list.append(name_photo)
+                else:
+                    name_photo += date + '-' + str(count)
+                    count += 1
+                    name_foto_list.append(name_photo)
+                photo_list_for_upload.append({'url': max_size[0]['url'],
+                                              'size': max_size[0]['type'],
+                                              'name': name_photo})
+            print(f'{timelog}: Список фотографий для скачивания получен.')
+            return photo_list_for_upload
+        except requests.ConnectionError as e:
+            quit(f'{timelog} Ошибка подключения: {e}')
+        except requests.Timeout as e:
+            quit(f'{timelog} Ошибка тайм-аута: {e}')
+        except requests.RequestException as e:
+            quit(f'{timelog} Ошибка запроса: {e}')
+        except KeyError as e:
+            quit(f'{timelog} Ошибка в ответе: {e}')
+        except Exception as e:
+            quit(f'{timelog} Ошибка: {e}')
 
 
 class YaUploader:
@@ -138,3 +145,5 @@ if __name__ == '__main__':
     ya_client = YaUploader(token_ya)
     ya_client.upload(photo_list_path)
     # upload_on_gdrive_from_url(photo_list_path)
+
+# 1383498
