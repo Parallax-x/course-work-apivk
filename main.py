@@ -70,6 +70,8 @@ class YaUploader:
     def upload(self, path_to_photo, count=5):
         """метод создает папку на Яндекс диске и загружает фотографии из списка в эту папку.
         По умолчанию 5 фотографий"""
+        if not isinstance(path_to_photo, list):
+            quit(f'{timelog}: Ошибка. Список фотографий для скачивания не получен.')
         if len(path_to_photo) == 0:
             quit(f'{timelog}: Ошибка. Список фотографий для скачивания пуст.')
         url_new_folder = 'https://cloud-api.yandex.net/v1/disk/resources'
@@ -87,7 +89,7 @@ class YaUploader:
             if 200 <= r.status_code < 300:
                 uploaded_photos.append({'file_name': file['name'], 'size': file['size']})
             else:
-                print(f"{timelog}: Не удалось загрузить фотографию {file['name']}!")
+                quit(f"{timelog}: Не удалось загрузить фотографию {file['name']}!")
         with open('UploadedPhotos.json', 'w') as f:
             json.dump(uploaded_photos, f, ensure_ascii=False, indent=2)
         print(f'{timelog}: Фотографии загружены на Яндекс диск!')
@@ -145,5 +147,3 @@ if __name__ == '__main__':
     ya_client = YaUploader(token_ya)
     ya_client.upload(photo_list_path)
     # upload_on_gdrive_from_url(photo_list_path)
-
-# 1383498
