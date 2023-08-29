@@ -3,6 +3,7 @@ import requests
 import time
 import wget
 import io
+import sys
 from tqdm import tqdm
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
@@ -49,15 +50,15 @@ class VkUser:
             print(f'{timelog}: Список фотографий для скачивания получен.')
             return photo_list_for_upload
         except requests.ConnectionError as e:
-            quit(f'{timelog} Ошибка подключения: {e}')
+            sys.exit(f'{timelog} Ошибка подключения: {e}')
         except requests.Timeout as e:
-            quit(f'{timelog} Ошибка тайм-аута: {e}')
+            sys.exit(f'{timelog} Ошибка тайм-аута: {e}')
         except requests.RequestException as e:
-            quit(f'{timelog} Ошибка запроса: {e}')
+            sys.exit(f'{timelog} Ошибка запроса: {e}')
         except KeyError as e:
-            quit(f'{timelog} Ошибка в ответе: {e}')
+            sys.exit(f'{timelog} Ошибка в ответе: {e}')
         except Exception as e:
-            quit(f'{timelog} Ошибка: {e}')
+            sys.exit(f'{timelog} Ошибка: {e}')
 
 
 class YaUploader:
@@ -71,14 +72,14 @@ class YaUploader:
         """метод создает папку на Яндекс диске и загружает фотографии из списка в эту папку.
         По умолчанию 5 фотографий"""
         if not isinstance(path_to_photo, list):
-            quit(f'{timelog}: Ошибка. Список фотографий для скачивания не получен.')
+            sys.exit(f'{timelog}: Ошибка. Список фотографий для скачивания не получен.')
         if len(path_to_photo) == 0:
-            quit(f'{timelog}: Ошибка. Список фотографий для скачивания пуст.')
+            sys.exit(f'{timelog}: Ошибка. Список фотографий для скачивания пуст.')
         url_new_folder = 'https://cloud-api.yandex.net/v1/disk/resources'
         folder = input('Придумайте название новой папки для загруженных фотографий! ')
         req = requests.put(url_new_folder, params={'path': f'/{folder}'}, headers={'Authorization': token_ya})
         if req.status_code >= 300:
-            quit(f'{timelog}: Ошибка. Папка не создана. Фотографии не загружены!')
+            sys.exit(f'{timelog}: Ошибка. Папка не создана. Фотографии не загружены!')
         print(f'{timelog}: Папка {folder} создана.')
         uploaded_photos = []
         for file in tqdm(path_to_photo[:count]):
@@ -89,7 +90,7 @@ class YaUploader:
             if 200 <= r.status_code < 300:
                 uploaded_photos.append({'file_name': file['name'], 'size': file['size']})
             else:
-                quit(f"{timelog}: Не удалось загрузить фотографию {file['name']}!")
+                sys.exit(f"{timelog}: Не удалось загрузить фотографию {file['name']}!")
         with open('UploadedPhotos.json', 'w') as f:
             json.dump(uploaded_photos, f, ensure_ascii=False, indent=2)
         print(f'{timelog}: Фотографии загружены на Яндекс диск!')
@@ -106,8 +107,10 @@ def download_photos(photo_url_list, path_on_pc, count=5):
 def upload_on_gdrive_from_url(photo_url_list, count=5):
     """Функция создает папку на Google диске и загружает фотографии из списка в эту папку.
     По умолчанию 5 фотографий. Нужен файл client_secrets.json"""
+    if not isinstance(photo_url_list, list):
+        sys.exit(f'{timelog}: Ошибка. Список фотографий для скачивания не получен.')
     if len(photo_url_list) == 0:
-        quit(f'{timelog}: Ошибка. Список фотографий для скачивания пуст.')
+        sys.exit(f'{timelog}: Ошибка. Список фотографий для скачивания пуст.')
     gauth = GoogleAuth()
     drive = GoogleDrive(gauth)
     folder_name = input('Придумайте название новой папки для загруженных фотографий! ')
